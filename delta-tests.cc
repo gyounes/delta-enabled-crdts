@@ -799,6 +799,99 @@ void example_bcounter()
   cout << bcx.local() << endl;
 }
 
+//// added By Georges
+void example_orseq_2()
+{
+  ByteArray bl,br;
+  bl.len = 2;
+  bl.data = (uint8_t *)malloc(bl.len);
+  bl.data[0] = 0xb9;
+  bl.data[1] = 0x2a;
+
+  br.len = 1;
+  br.data = (uint8_t *)malloc(br.len);
+  br.data[0] = 0x80;
+  
+  printByteArray(bl);
+  printByteArray(br);
+
+  //printByteArray(ByteArray_GenerateBetween(bl, br, 0));
+  printByteArray(ByteArray_GenerateBetween(bl, br, 1));
+
+  free(bl.data);
+  free(br.data);
+
+  // Simple ORSEQ
+
+  orseq2<> seq("rid");
+  seq.push_back('a');
+  cout << seq << endl;
+  seq.push_back('b');
+  cout << seq << endl;
+  seq.push_back('c');
+  seq.push_front('0');
+  seq.push_front('1');
+  cout << seq << endl;
+
+  auto i = seq.begin();
+  i++;
+  seq.insert(i,'x');
+  cout << seq << endl;
+
+  orseq2<> seq2("b");
+  seq2.push_back('y');
+  cout << seq2 << endl;
+
+  // seq.join(seq2);
+  // cout << seq << endl;
+  // seq2.erase(seq2.begin());
+  // seq.join(seq2);
+  // cout << seq << endl;
+  // seq.reset();
+  // cout << seq << endl;
+
+  // Map with a ORSEQ inside
+
+  // ormap<string,orseq<char>> ms1("id1"),ms2("id2");
+  // ms1["upper"].push_back('a');
+  // ms2["upper"].push_front('b');
+  // ms2["lower"].push_front('c');
+  // ms1.join(ms2);
+  // cout << ms1 << endl;
+  // ms2.erase("upper");
+  // ms1.join(ms2);
+  // cout << ms1 << endl;
+
+  // Metadata growth, insertions and deletions of added elements,
+  // while keeping the first element there
+
+  orseq2<> seq3("s3");
+  seq3.push_back('a');
+  cout << seq3 << endl;
+  for (int ops=0; ops < 100000; ops++)
+  {
+    seq3.push_front('d');
+    seq3.erase(seq3.begin());
+  }
+  cout << seq3 << endl;
+
+  // Metadata growth, insertions and deletions of added elements,
+  // while keeping the last added element there
+
+  orseq2<> seq4("s4");
+  seq4.push_back('a');
+  cout << seq4 << endl;
+  for (int ops=0; ops < 100000; ops++)
+  {
+    seq4.push_back('d');
+    seq4.erase(seq4.begin());
+  }
+  cout << seq4 << endl;
+  seq4.erase(seq4.begin());
+  cout << seq4 << endl;
+}
+//// added By Georges
+
 void example_orseq()
 {
   vector<bool> bl,br;
@@ -1019,62 +1112,72 @@ void test_rwcounter()
 
 }
 
+//// added by Georges
 int main(int argc, char * argv[])
 {
-  test_gset();
-  test_twopset();
-  test_gcounter();
-  test_pncounter();
-  test_lexcounter();
-  test_aworset();
-  test_rworset();
-  test_mvreg();
-//  test_maxord();
-  test_maxpairs();
-  test_lwwreg();
-  test_rwlwwset();
-  test_ewflag();
-  test_dwflag();
-  test_ormap();
-  test_rwlwwset();
-  test_bag();
-  test_rwcounter();
-
-  example1();
-  example2();
-  example3();
-
-  example_gset();
-  example_twopset();
-  example_pair();
-  example_lexpair();
-  example_gcounter();
-  example_pncounter();
-  example_lexcounter();
-  example_ccounter();
-  example_aworset();
-  example_rworset();
-  example_ormap();
-  example_gmap();
-  example_bcounter();
+  // randomInsertTest(10);
   example_orseq();
-  example_mvreg();
-
-
-//  ormap<string,aworset<string>> m1("dev1"),m2("dev2");
-//
-//  m1["friend"].add("alice");
-//  m2.join(m1); m2.erase("friend");
-//  m1["friend"].add("bob");
-//  
-//  cout << join(m1,m2) << endl; // shows: friend -> {bob}
-
-  ormap<string,rwcounter<int>> m1("dev1"),m2("dev2");
-
-  m1["friend"].inc(2);
-  m2.join(m1); m2.erase("friend");
-  m1["friend"].fresh(); m1["friend"].inc(3);
-  
-  cout << join(m1,m2)["friend"].read() << endl; // shows a total of 3
-
+  example_orseq_2();
 }
+//// added by Georges
+
+//// commented by Georges
+// int main(int argc, char * argv[])
+// {
+//   test_gset();
+//   test_twopset();
+//   test_gcounter();
+//   test_pncounter();
+//   test_lexcounter();
+//   test_aworset();
+//   test_rworset();
+//   test_mvreg();
+// //  test_maxord();
+//   test_maxpairs();
+//   test_lwwreg();
+//   test_rwlwwset();
+//   test_ewflag();
+//   test_dwflag();
+//   test_ormap();
+//   test_rwlwwset();
+//   test_bag();
+//   test_rwcounter();
+
+//   example1();
+//   example2();
+//   example3();
+
+//   example_gset();
+//   example_twopset();
+//   example_pair();
+//   example_lexpair();
+//   example_gcounter();
+//   example_pncounter();
+//   example_lexcounter();
+//   example_ccounter();
+//   example_aworset();
+//   example_rworset();
+//   example_ormap();
+//   example_gmap();
+//   example_bcounter();
+//   example_orseq();
+//   example_mvreg();
+
+
+// //  ormap<string,aworset<string>> m1("dev1"),m2("dev2");
+// //
+// //  m1["friend"].add("alice");
+// //  m2.join(m1); m2.erase("friend");
+// //  m1["friend"].add("bob");
+// //  
+// //  cout << join(m1,m2) << endl; // shows: friend -> {bob}
+
+//   ormap<string,rwcounter<int>> m1("dev1"),m2("dev2");
+
+//   m1["friend"].inc(2);
+//   m2.join(m1); m2.erase("friend");
+//   m1["friend"].fresh(); m1["friend"].inc(3);
+  
+//   cout << join(m1,m2)["friend"].read() << endl; // shows a total of 3
+
+// }

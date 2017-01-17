@@ -37,6 +37,21 @@
 #include <iostream>
 #include <type_traits>
 
+//// added By Georges
+#include "idgen.c"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "idgen.h"
+
+#ifdef __cplusplus
+}
+#endif
+//// added by Georges
+
 using namespace std;
 
 template< bool b > 
@@ -2051,3 +2066,232 @@ public:
 
 };
 
+template<typename T=char, typename I=string>
+class orseq2
+{
+private:
+
+  // List elements are: (position,dot,payload)
+  list<tuple<ByteArray,pair<I,int>,T>> l;
+  I id;  
+
+  dotcontext<I> cbase;
+  dotcontext<I> & c;
+
+public:
+
+  // if no causal context supplied, used base one
+  orseq2() : c(cbase) {}  // Only for deltas and those should not be mutated
+  orseq2(I i) : id(i), c(cbase) {} 
+  // if supplied, use a shared causal context
+  orseq2(I i,dotcontext<I> &jointc) : id(i), c(jointc) {} 
+
+  orseq2<T,I> & operator=(const orseq2<T,I> & aos)
+  {
+    if (&aos == this) return *this;
+    if (&c != &aos.c) c=aos.c; 
+    l=aos.l;
+    id=aos.id;
+    return *this;
+  }
+
+  friend ostream &operator<<( ostream &output, const orseq2<T,I>& o)
+  { 
+    output << "ORSeq2: " << o.c;
+    output << " List:"; 
+    for (const auto & t : o.l){
+      output << "(" ;
+      coutByteArray(get<0>(t));
+      output << " " << get<1>(t) 
+        << " " << get<2>(t) << ")";
+    }
+    return output;            
+  }
+
+  typename list<tuple<ByteArray,pair<I,int>,T>>::iterator begin() 
+  {
+    return l.begin();
+  }
+
+  typename list<tuple<ByteArray,pair<I,int>,T>>::iterator end() 
+  {
+    return l.end();
+  }
+
+  orseq2<T,I> erase (typename list<tuple<ByteArray,pair<I,int>,T>>::iterator i)
+  {
+    orseq2<T,I> res;
+    if (i != l.end())
+    {
+      res.c.insertdot(get<1>(*i));
+      l.erase(i);
+    }
+    return res;
+  }
+
+  dotcontext<I> & context()
+  {
+    return c;
+  }
+
+  orseq2<T,I> reset ()
+  {
+    orseq2<T,I> res;
+    for (auto const & t : l)
+      res.c.insertdot(get<1>(t));
+    l.clear();
+    return res;
+  }
+
+  orseq2<T,I> insert (typename list<tuple<ByteArray,pair<I,int>,T>>::iterator i, const T & val)
+  {
+    orseq2<T,I> res;
+    if (i == l.end())
+      res=push_back(val);
+    else
+      if (i == l.begin())
+        res=push_front(val);
+      else
+      {
+        typename list<tuple<ByteArray,pair<I,int>,T>>::iterator j=i;
+        j--;
+        ByteArray bl,br,pos;
+        bl=get<0>(*j);
+        br=get<0>(*i);
+        pos=ByteArray_GenerateBetween(bl, br, 1);
+        // get new dot
+        auto dot=c.makedot(id);
+        auto tuple=make_tuple(pos,dot,val);
+        l.insert(i,tuple);
+        // delta
+        res.c.insertdot(dot);
+        res.l.push_front(tuple);
+      }
+    return res;
+  }
+
+  // add 1st element
+  orseq2<T,I> makefirst(const T & val)
+  {
+    assert(l.empty());
+
+    orseq2<T,I> res;
+    ByteArray bl,br,pos;
+    bl.len = 1;
+    bl.data = (uint8_t *)malloc(bl.len);
+    bl.data[0] = 0x00;
+
+    br.len = 1;
+    br.data = (uint8_t *)malloc(br.len);
+    br.data[0] = 0x80;
+    pos=ByteArray_GenerateBetween(bl, br, 1);
+    free(bl.data);
+    free(br.data);
+    // get new dot
+    pair<I,int> dot=c.makedot(id);
+    l.push_back(make_tuple(pos,dot,val));
+    // delta
+    res.c.insertdot(dot);
+    res.l=l;
+    return res;
+  }
+
+  orseq2<T,I> push_back (const T & val)
+  {
+    orseq2<T,I> res;
+    if (l.empty())
+      res=makefirst(val);
+    else
+    {
+      ByteArray bl,br,pos;
+      bl=get<0>(l.back());
+      br.len = 1;
+      br.data = (uint8_t *)malloc(br.len);
+      br.data[0] = 0x80;
+      pos=ByteArray_GenerateBetween(bl, br, 1);
+      free(br.data);
+      // get new dot
+      auto dot=c.makedot(id);
+      auto tuple=make_tuple(pos,dot,val);
+      l.push_back(tuple);
+      // delta
+      res.c.insertdot(dot);
+      res.l.push_front(tuple);
+    }
+    return res;
+  }
+
+  orseq2<T,I> push_front (const T & val)
+  {
+    orseq2<T,I> res;
+    if (l.empty())
+      res=makefirst(val);
+    else
+    {
+      ByteArray bl,br,pos;
+      br=get<0>(l.front());
+      bl.len = 1;
+      bl.data = (uint8_t *)malloc(bl.len);
+      bl.data[0] = 0x00;
+      pos=ByteArray_GenerateBetween(bl, br, 1);
+      free(bl.data);
+      // get new dot
+      auto dot=c.makedot(id);
+      auto tuple=make_tuple(pos,dot,val);
+      l.push_front(tuple);
+      // delta
+      res.c.insertdot(dot);
+      res.l.push_front(tuple);
+    }
+    return res;
+  }
+
+// void join (const orseq2<T,I> & o)
+//   {
+//     if (this == &o) return; // Join is idempotent, but just don't do it.
+//     auto it=l.begin(); auto ito=o.l.begin();
+//     pair<ByteArray,I> e,eo;
+//     do 
+//     {
+//       if ( it != l.end() )
+//       {
+//         e.first=get<0>(*it);
+//         e.second=get<1>(*it).first;
+//       }
+//       if ( ito != o.l.end() )
+//       {
+//         eo.first=get<0>(*ito);
+//         eo.second=get<1>(*ito).first;
+//       }
+//       if ( it != l.end() && ( ito == o.l.end() || lessThan(e, eo)) )
+//       {
+//         // cout << "ds one\n";
+//         // entry only at this
+//         if (o.c.dotin(get<1>(*it))) // other knows dot, must delete here 
+//           l.erase(it++);
+//         else // keep it
+//           ++it;
+//       }
+//       else if ( ito != o.l.end() && ( it == l.end() || lessThan(eo, e) ) )
+//       {
+//         //cout << "ds two\n";
+//         // entry only at other
+//         if(! c.dotin(get<1>(*ito))) // If I dont know, import
+//         {
+//           l.insert(it,*ito); // it keeps pointing to next
+//         }
+//         ++ito;
+//       }
+//       else if ( it != l.end() && ito != o.l.end() )
+//       {
+//         // cout << "ds three\n";
+//         // in both
+//         ++it; ++ito;
+//       }
+//     } while (it != l.end() || ito != o.l.end() );
+//     // CC
+//     c.join(o.c);
+
+//   }
+
+};
